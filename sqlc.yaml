@@ -1,0 +1,17 @@
+version: "1"
+packages:
+    - name: "db"
+      path: "./db/sqlc"
+      queries: "./db/query/"
+      schema: "./db/migration/"
+      engine: "postgresql"
+    #   Want to add json to the generator struct.
+      emit_json_tags: true
+    #   Tells sqlc to generate code to work with prepared statements. 
+    # dont neeed this for optimized performance, therefore it is set to false.
+      emit_prepared_queries: false
+    #   Mock data for testing.
+      emit_interface: false
+    #   Naming convention, adds a plural to a table. Best to set it to false.
+      emit_exact_table_names: false
+
