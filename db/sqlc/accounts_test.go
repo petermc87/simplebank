@@ -18,6 +18,7 @@ func TestCreateAccount(t *testing.T){
 	}
 
 	account, err := testQueries.CreateAccount(context.Background(), arg)
+	//Importing the testify module to check different entries sent to the table.
 	require.NoError(t, err)
 	require.NotEmpty(t, account)
 
