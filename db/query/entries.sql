@@ -19,12 +19,4 @@ LIMIT $2
 OFFSET $3;
 -- We are filtering by account_id. We only want entries from that account.
 
--- -- name: UpdateEntry :one
--- UPDATE entries
--- SET amount = $2
--- WHERE id = $1
--- RETURNING *;
-
--- -- name: DeleteEntry :one
--- DELETE FROM entries
--- WHERE id = $1;
+-- You should not be able to modify and delete an entry.

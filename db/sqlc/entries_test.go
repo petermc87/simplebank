@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	// "database/sql"
 	"testing"
 	"time"
 
@@ -49,7 +48,7 @@ func TestGetEntry(t *testing.T) {
 	// Create a new entry and pass in account.
 	entry := createRandomEntry(t, account)
 
-	// Perform the get operation using the ID.
+	// Perform the get HTTP request using the ID.
 	entryResponse, err := testQueries.GetEntry(context.Background(), entry.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, entryResponse)
