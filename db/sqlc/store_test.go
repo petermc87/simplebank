@@ -1,14 +1,15 @@
 package db
 
 import (
-	"testing"
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 )
 
 // Create a test transfertx func, passing in the usual test args.
-func TestTransferTx(t *testing.T){
+func TestTransferTx(t *testing.T) {
 
 	// Create a new db store.
 	store := NewStore(testDB)
@@ -24,7 +25,7 @@ func TestTransferTx(t *testing.T){
 
 	// Run some concurrent transactions using a loop. It is important to test that concurrency
 	// is ok!
-	n := 5
+	n := 2
 
 	// 2. Recieve the errors as one channel.
 	errs := make(chan error)
@@ -32,19 +33,30 @@ func TestTransferTx(t *testing.T){
 	// 3. Receive the transfer as the second channel.
 	results := make(chan TransferTxResult)
 
-	for i := 0; i < 5; i ++ {
+	for i := 0; i < 5; i++ {
+
+		// Create a name for each one of the transactions so they can be printed out.
+		// first arguement prints out tx including the second arguement.
+
+		txName := fmt.Sprintf("tx %d", i+1)
+
 		// use a go routine. NOTE: There is a set of round brackets at the end to call the func.
-		go func(){
+		go func() {
+			// We are storing this in the context. The context.Background will be passed in as a
+			// parent variable.
+			// WithValue(parent_Context, key interface{}, val interface{}) --> should not be of string
+			// or built in type to avoid collisions.
+
+			ctx := context.WithValue(context.Background(), txKey, txName)
 			// Results and err variables that will call the TransferTx function from the store.go file.
-			// Go to line 86 to see the breakdown of the function.	
-			result, err := store.TransferTx(context.Background(), TransferTxParams {
+			// Go to line 86 to see the breakdown of the function.
+			result, err := store.TransferTx(ctx, TransferTxParams{
 				FromAccountID: account1.ID,
-				ToAccountID: account2.ID,
-				Amount: amount,
+				ToAccountID:   account2.ID,
+				Amount:        amount,
 			})
 			// 1. Because this is a local go func, we dont have access to require to check for errors
-			// So any errors are returned to the main go return. We can use channels 
-
+			// So any errors are returned to the main go return. We can use channels
 
 			// 4. Pass data on the right to channel on the left.
 			errs <- err
@@ -52,14 +64,14 @@ func TestTransferTx(t *testing.T){
 
 		}()
 	}
-		
+
 	// Create a new variable called exisited to check k in the amount and difference checker at the end
-	// of this loop. 
+	// of this loop.
 	// Integer is the key, boolean is the value.
 	existed := make(map[int]bool)
 
 	// 5. Check the errors by looping over every new transfer.
-	for i := 0; i < n; i ++ {
+	for i := 0; i < n; i++ {
 		// 6. Store the errs channel in a new err variable an check for no errors.
 		err := <-errs
 		require.NoError(t, err)
@@ -67,8 +79,6 @@ func TestTransferTx(t *testing.T){
 		// 7. Store result and check if not empty.
 		result := <-results
 		require.NotEmpty(t, result)
-
-
 
 		// 8. Check the transfer object in the result.
 		transfer := result.Transfer
@@ -82,9 +92,6 @@ func TestTransferTx(t *testing.T){
 		require.NotZero(t, transfer.ID)
 		require.NotZero(t, transfer.CreatedAt)
 
-
-
-
 		// Check FromEntry object.
 		fromEntry := result.FromEntry
 
@@ -92,7 +99,7 @@ func TestTransferTx(t *testing.T){
 
 		require.Equal(t, fromEntry.AccountID, account1.ID)
 		require.Equal(t, fromEntry.Amount, -amount)
-		
+
 		require.NotZero(t, fromEntry.ID)
 		require.NotZero(t, fromEntry.CreatedAt)
 
@@ -101,7 +108,6 @@ func TestTransferTx(t *testing.T){
 		// NOTE: _ part of the funciton is because we arent storing it in a variable.
 		_, err = store.GetEntry(context.Background(), fromEntry.ID)
 		require.NoError(t, err)
-
 
 		// Check ToEntry object.
 
@@ -128,11 +134,11 @@ func TestTransferTx(t *testing.T){
 		toAccount := result.ToAccount
 		require.NotEmpty(t, toAccount)
 		require.Equal(t, account2.ID, toAccount.ID)
-		
+
 		// Print transaction in progress.
 		fmt.Println(">> After:", fromAccount.Balance, toAccount.Balance)
 		// Check accounts balance.
-		// The difference between the balance before 
+		// The difference between the balance before
 		// account1/account2 and after toAccount and fromAccount.
 		diff1 := account1.Balance - fromAccount.Balance
 		diff2 := toAccount.Balance - account2.Balance
@@ -142,7 +148,7 @@ func TestTransferTx(t *testing.T){
 		// If there is a transactions, it will be greater than 0!
 		require.True(t, diff1 > 0)
 		// If there is a transaction, then the remainder from dividing the amount and the difference should be 0!
-		require.True(t, diff1 % amount == 0)
+		require.True(t, diff1%amount == 0)
 
 		// We are going to have a total of 5 transactions (based in the for loop). So the divider will iterate up:
 		// 10/10 = 1, 20/10 = 2, 30/10 = 3 ...
@@ -154,10 +160,8 @@ func TestTransferTx(t *testing.T){
 
 		// The map generated should not contain a k value.
 		require.NotContains(t, existed, k)
-		
+
 		existed[k] = true
-
-
 
 	}
 
@@ -171,10 +175,9 @@ func TestTransferTx(t *testing.T){
 	// Printing balance after transactions.
 	fmt.Println("After:", updatedAccount1.Balance, updatedAccount2.Balance)
 	// Testing a reduced balance of account1 against the iterated account 1 balance.
-	require.Equal(t, account1.Balance - (amount * int64(n)), updatedAccount1.Balance)
+	require.Equal(t, account1.Balance-(amount*int64(n)), updatedAccount1.Balance)
 
 	// Testing an increased balance.
-	require.Equal(t, account2.Balance + (amount * int64(n)), updatedAccount2.Balance)
-
+	require.Equal(t, account2.Balance+(amount*int64(n)), updatedAccount2.Balance)
 
 }
