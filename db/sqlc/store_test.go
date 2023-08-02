@@ -20,13 +20,11 @@ func TestTransferTx(t *testing.T) {
 	// Print out balances before.
 	fmt.Println(">> Before:", account1.Balance, account2.Balance)
 
-	// Specify an amount.
-	amount := int64(10)
-
 	// Run some concurrent transactions using a loop. It is important to test that concurrency
 	// is ok!
-	n := 2
-
+	n := 5
+	// Specify an amount.
+	amount := int64(10)
 	// 2. Recieve the errors as one channel.
 	errs := make(chan error)
 
@@ -35,11 +33,6 @@ func TestTransferTx(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 
-		// Create a name for each one of the transactions so they can be printed out.
-		// first arguement prints out tx including the second arguement.
-
-		txName := fmt.Sprintf("tx %d", i+1)
-
 		// use a go routine. NOTE: There is a set of round brackets at the end to call the func.
 		go func() {
 			// We are storing this in the context. The context.Background will be passed in as a
@@ -47,7 +40,7 @@ func TestTransferTx(t *testing.T) {
 			// WithValue(parent_Context, key interface{}, val interface{}) --> should not be of string
 			// or built in type to avoid collisions.
 
-			ctx := context.WithValue(context.Background(), txKey, txName)
+			ctx := context.Background()
 			// Results and err variables that will call the TransferTx function from the store.go file.
 			// Go to line 86 to see the breakdown of the function.
 			result, err := store.TransferTx(ctx, TransferTxParams{
