@@ -117,29 +117,45 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 			return err
 		}
 
-		// TODO: Update account balance.
-		// Get the account from the database.
-		// Update amount.
-		// Send it back to database.
+		// This checks if the current from account is the lesser ID, then it should update before the from.
+		if arg.FromAccountID < arg.ToAccountID {
+			// This corresponds to the data struct in the AddAccountBalance sql operation in accounts.sql
+			// and AddAccountsBalanceParams in accounts.sql.go.
+			result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+				ID: arg.FromAccountID,
+				// Negating the transfered amount.
+				Amount: -arg.Amount,
+			})
+			if err != nil {
+				return err
+			}
 
-		// This corresponds to the data struct in the AddAccountBalance sql operation in accounts.sql
-		// and AddAccountsBalanceParams in accounts.sql.go.
-		result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
-			ID: arg.FromAccountID,
-			// Negating the transfered amount.
-			Amount: -arg.Amount,
-		})
-		if err != nil {
-			return err
-		}
+			result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+				ID:     arg.ToAccountID,
+				Amount: arg.Amount,
+			})
 
-		result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
-			ID:     arg.ToAccountID,
-			Amount: arg.Amount,
-		})
+			if err != nil {
+				return err
+			}
 
-		if err != nil {
-			return err
+			// Reverse the order when the ID from ID is greater.
+		} else {
+
+			result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+				ID:     arg.ToAccountID,
+				Amount: arg.Amount,
+			})
+
+			result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+				ID: arg.FromAccountID,
+				// Negating the transfered amount.
+				Amount: -arg.Amount,
+			})
+			if err != nil {
+				return err
+			}
+
 		}
 
 		return nil

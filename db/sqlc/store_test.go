@@ -174,3 +174,86 @@ func TestTransferTx(t *testing.T) {
 	require.Equal(t, account2.Balance+(amount*int64(n)), updatedAccount2.Balance)
 
 }
+
+// Create a test transfertx func, passing in the usual test args.
+func TestTransferTxDeadlock(t *testing.T) {
+
+	// Create a new db store.
+	store := NewStore(testDB)
+
+	// Create two new accounts.
+	account1 := createRandomAccount(t)
+	account2 := createRandomAccount(t)
+	// Print out balances before.
+	fmt.Println(">> Before:", account1.Balance, account2.Balance)
+
+	// Run some concurrent transactions using a loop. It is important to test that concurrency
+	// is ok!
+	n := 10
+	// Specify an amount.
+	amount := int64(10)
+	// 2. Recieve the errors as one channel.
+	errs := make(chan error)
+
+	for i := 0; i < n; i++ {
+
+		// Money moving out.
+		fromAccountID := account1.ID
+		toAccountID := account2.ID
+		// If the iteration is an odd number, make the fromID = account2 ID, and
+		// toID = account1 ID
+
+		// Money moving in.
+		if i%2 == 1 {
+			// Set the from an to account ids.
+			fromAccountID = account2.ID
+			toAccountID = account1.ID
+
+		}
+
+		// use a go routine. NOTE: There is a set of round brackets at the end to call the func.
+		go func() {
+			// We are storing this in the context. The context.Background will be passed in as a
+			// parent variable.
+			// WithValue(parent_Context, key interface{}, val interface{}) --> should not be of string
+			// or built in type to avoid collisions.
+
+			ctx := context.Background()
+			// Results and err variables that will call the TransferTx function from the store.go file.
+			// Go to line 86 to see the breakdown of the function.
+			_, err := store.TransferTx(ctx, TransferTxParams{
+				FromAccountID: fromAccountID,
+				ToAccountID:   toAccountID,
+				Amount:        amount,
+			})
+			// 1. Because this is a local go func, we dont have access to require to check for errors
+			// So any errors are returned to the main go return. We can use channels
+
+			// 4. Pass data on the right to channel on the left.
+			errs <- err
+		}()
+	}
+
+	// 5. Check the errors by looping over every new transfer.
+	for i := 0; i < n; i++ {
+		// 6. Store the errs channel in a new err variable an check for no errors.
+		err := <-errs
+		require.NoError(t, err)
+	}
+
+	// Now after balance updates above, check the account balances.
+	updatedAccount1, err := testQueries.GetAccount(context.Background(), account1.ID)
+	require.NoError(t, err)
+
+	updatedAccount2, err := testQueries.GetAccount(context.Background(), account2.ID)
+	require.NoError(t, err)
+
+	// Printing balance after transactions.
+	fmt.Println("After:", updatedAccount1.Balance, updatedAccount2.Balance)
+
+	// The balance should be the same since we are moving the same money out and back.
+	require.Equal(t, account1.Balance, updatedAccount1.Balance)
+	// Testing an increased balance.
+	require.Equal(t, account2.Balance, updatedAccount2.Balance)
+
+}
