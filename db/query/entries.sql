@@ -18,5 +18,4 @@ ORDER BY id
 LIMIT $2
 OFFSET $3;
 -- We are filtering by account_id. We only want entries from that account.
-
 -- You should not be able to modify and delete an entry.
