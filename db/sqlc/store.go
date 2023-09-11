@@ -6,16 +6,23 @@ import (
 	"fmt"
 )
 
+// Store will provide all functions needed to execute queries to a db.
+type Store interface {
+	Querier
+	TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error)
+}
+
 // To execute all functions and transactions.
-type Store struct {
+type SQLStore struct {
 	// So we can create a combination of queries.
 	*Queries
 	// To create a new DB transaction, we need the DB object.
 	db *sql.DB
 }
 
-func NewStore(db *sql.DB) *Store {
-	return &Store{
+// Store is no longer a pointer (star * value) because we have an interface option now.
+func NewStore(db *sql.DB) Store {
+	return &SQLStore{
 		db:      db,
 		Queries: New(db),
 	}
@@ -24,7 +31,7 @@ func NewStore(db *sql.DB) *Store {
 // Create pass in context and a call back function. Once a queries object is created, its passed into
 // the callback function.
 // execTx is a function execution within a database transaction.
-func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
+func (store *SQLStore) execTx(ctx context.Context, fn func(*Queries) error) error {
 	// Returns a transaction OR err.
 	tx, err := store.db.BeginTx(ctx, nil)
 
@@ -77,7 +84,7 @@ type TransferTxResult struct {
 
 // TransferTx is a money transfer database entry from one account to another.
 // This is achieved via a transfer record, account entries and updates to transaction balance.
-func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
+func (store *SQLStore) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
 	var result TransferTxResult
 	// NOTE: Ctx means everything else besides the arguements passed onto the function. This helps with
 	// understandin errors if a connection goes down, for example.

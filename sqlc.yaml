@@ -11,7 +11,7 @@ packages:
     # dont neeed this for optimized performance, therefore it is set to false.
       emit_prepared_queries: false
     #   Mock data for testing.
-      emit_interface: false
+      emit_interface: true
     #   Naming convention, adds a plural to a table. Best to set it to false.
       emit_exact_table_names: false
       emit_empty_slices: true
